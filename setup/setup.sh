@@ -13,7 +13,7 @@ ansible-pull -U $GITHUB_REPO -i "localhost," -c local -K $ANSIBLE_PACKAGES
 
 
 ####### DNS SETUP #######
-ping colossus -c 5
+ping prometheus -c 5
 if [ $? -eq 0 ]; then
     echo "Local DNS resolution is working!"
 else
@@ -28,7 +28,7 @@ else
         sleep 5
         echo "Local DNS resolution enabled!"
         # test it out by ping to colossus
-        ping colossus -c 5
+        ping prometheus -c 5
         if [ $? -eq 0 ]; then
             echo "Local DNS resolution is working!"
         else
