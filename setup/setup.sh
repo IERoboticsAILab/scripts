@@ -47,9 +47,8 @@ apt-get update && apt-get install -y libnss-ldapd libpam-ldapd nscd nslcd autofs
 echo "Testing local DNS resolution..."
 ping prometheus -c 5 >/dev/null 2>&1
 if [ $? -ne 0 ]; then
-    echo "Local DNS resolution is not working. Would you like to set up a local DNS server? (y/n)"
-    read -r answer
-    if [ "$answer" == "y" ]; then
+    read -r -p "Local DNS resolution is not working. Would you like to set up a local DNS server? (y/n)" response
+    if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
         echo "Enabling local DNS resolution..."
         curl -s "$DNS_ENABLE_SCRIPT" | bash || die "Failed to enable local DNS resolution."
         echo "Waiting for DNS to update..."
