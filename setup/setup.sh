@@ -10,7 +10,7 @@ LDAP_URI="ldap://10.205.10.3/"
 BASE_DN="dc=prometheus,dc=lab"
 BIND_DN="cn=admin,dc=prometheus,dc=lab"
 NFS_SERVER="10.205.10.3"
-NFS_HOMES_EXPORT="/homes"
+NFS_HOME="/homes"
 PAST_ADMIN="lab"
 LOCAL_USER="failsafe"
 LOCAL_PASS="oopsmybad"
@@ -86,21 +86,11 @@ sudo sed -i 's/^shadow:.*/shadow:         compat ldap/' /etc/nsswitch.conf
 ####### NFS CONFIGURATION #######
 echo "Configuring AutoFS and NFS for home directories..."
 grep -q "^/home" /etc/auto.master || echo "/home /etc/auto.home" >> /etc/auto.master
-cat > /etc/auto.home <<EOF
-* -fstype=nfs,rw $NFS_SERVER:$NFS_HOMES_EXPORT/&
-EOF
-
-# Restart autofs
+echo "* -fstype=nfs,rw $NFS_SERVER:$NFS_HOME/&" > /etc/auto.home
 systemctl restart autofs || die "Failed to restart autofs."
 
-# Ensure NFS is also in /etc/fstab for fallback
-if ! grep -qs "$NFS_SERVER:$NFS_HOMES_EXPORT" /etc/fstab; then
-    echo "$NFS_SERVER:$NFS_HOMES_EXPORT /home nfs defaults 0 0" >> /etc/fstab
-    echo "NFS entry added to /etc/fstab."
-fi
-
-# Test manual mount for validation
-sudo mount -a || die "Failed to mount NFS directories."
+# Ensure home directory is owned by 'lab'
+[ "$(stat -c %U /home)" != "$PAST_ADMIN" ] && chown -R lab /home
 
 ####### USER MANAGEMENT #######
 # Add 'lab' to sudoers
