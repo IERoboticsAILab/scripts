@@ -10,8 +10,8 @@ LDAP_URI="ldap://10.205.10.3/"
 BASE_DN="dc=prometheus,dc=lab"
 BIND_DN="cn=admin,dc=prometheus,dc=lab"
 NFS_SERVER="10.205.10.3"
-NFS_HOME="/homes"
-PAST_ADMIN="lab"
+NFS_HOMES_EXPORT="/homes"
+PAST_ADMIN="admin"
 LOCAL_USER="failsafe"
 LOCAL_PASS="oopsmybad"
 
@@ -40,22 +40,6 @@ echo "Ansible installed!"
 ####### PACKAGES SETUP #######
 echo "Installing necessary packages..."
 apt-get update && apt-get install -y libnss-ldapd libpam-ldapd nscd nslcd autofs ansible || die "Failed to install necessary packages."
-
-####### DNS SETUP #######
-echo "Testing local DNS resolution..."
-ping prometheus -c 5 >/dev/null 2>&1
-if [ $? -ne 0 ]; then
-    echo "Local DNS resolution is not working. Would you like to set up a local DNS server? (y/n)"
-    read -r answer
-    if [ "$answer" == "y" ]; then
-        echo "Enabling local DNS resolution..."
-        curl -s "$DNS_ENABLE_SCRIPT" | bash || die "Failed to enable local DNS resolution."
-        echo "Waiting for DNS to update..."
-        sleep 5
-    else
-        echo "Skipping DNS setup."
-    fi
-fi
 
 ####### LDAP CONFIGURATION #######
 echo "Configuring LDAP..."
@@ -86,11 +70,43 @@ sudo sed -i 's/^shadow:.*/shadow:         compat ldap/' /etc/nsswitch.conf
 ####### NFS CONFIGURATION #######
 echo "Configuring AutoFS and NFS for home directories..."
 grep -q "^/home" /etc/auto.master || echo "/home /etc/auto.home" >> /etc/auto.master
-echo "* -fstype=nfs,rw $NFS_SERVER:$NFS_HOME/&" > /etc/auto.home
+cat > /etc/auto.home <<EOF
+* -fstype=nfs,rw $NFS_SERVER:$NFS_HOMES_EXPORT/&
+EOF
+
+# Restart autofs
 systemctl restart autofs || die "Failed to restart autofs."
 
-# Ensure home directory is owned by 'lab'
-[ "$(stat -c %U /home)" != "$PAST_ADMIN" ] && chown -R lab /home
+# Ensure NFS is also in /etc/fstab for fallback
+if ! grep -qs "$NFS_SERVER:$NFS_HOMES_EXPORT" /etc/fstab; then
+    echo "$NFS_SERVER:$NFS_HOMES_EXPORT /home nfs defaults 0 0" >> /etc/fstab
+    echo "NFS entry added to /etc/fstab."
+fi
+
+sudo mount -a || die "Failed to mount NFS directories."
+
+####### DYNAMIC PRIMARY GROUP CREATION #######
+echo "Adding dynamic group creation for LDAP users..."
+
+# Create a PAM script to assign the user's group dynamically
+cat > /usr/local/bin/assign_primary_group.sh <<'EOF'
+#!/bin/bash
+USER="$PAM_USER"
+
+if [ "$USER" ]; then
+    if ! getent group "$USER" >/dev/null; then
+        groupadd "$USER"
+    fi
+
+    # Update user's primary group if needed
+    usermod -g "$USER" "$USER" >/dev/null 2>&1 || true
+fi
+EOF
+
+chmod +x /usr/local/bin/assign_primary_group.sh
+
+# Add PAM session module to execute the script
+echo "session required pam_exec.so seteuid /usr/local/bin/assign_primary_group.sh" >> /etc/pam.d/common-session
 
 ####### USER MANAGEMENT #######
 # Add 'lab' to sudoers
