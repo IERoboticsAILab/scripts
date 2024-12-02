@@ -21,7 +21,7 @@ die() {
 
 ####### ANSIBLE SETUP #######
 echo "Installing Ansible..."
-curl -s "https://raw.githubusercontent.com/IE-Robotics-Lab/scripts/master/$ANSIBLE_PATH" | bash || die "Failed to install Ansible."
+curl -s https://raw.githubusercontent.com/IE-Robotics-Lab/scripts/master/$ANSIBLE_PATH | bash
 echo "Ansible installed!"
 
 ####### PACKAGES SETUP #######
