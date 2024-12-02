@@ -19,9 +19,9 @@ apt-get update && apt-get install -y libnss-ldapd libpam-ldapd nscd nslcd autofs
 
 
 # Variables
-LDAP_URI="ldap://10.205.1.2/"
-BASE_DN="dc=colossus"
-BIND_DN="cn=admin,dc=colossus"
+LDAP_URI="ldap://10.205.10.3/"
+BASE_DN="dc=prometheus,dc=lab"
+BIND_DN="cn=admin,dc=prometheus,dc=lab"
 # prompt for the password -s can sometimes be an ilegal option
 read -p "Enter the LDAP bind password: " BIND_PW
 # check if the password is correct
@@ -30,8 +30,8 @@ if [ $? -ne 0 ]; then
     echo "Invalid password"
     exit 1
 fi
-NFS_SERVER="10.205.1.2"  # Replace with your NFS server IP or hostname
-NFS_HOME="/home"  # Replace with the NFS shared directory for home directories
+NFS_SERVER="10.205.10.3"  # Replace with your NFS server IP or hostname
+NFS_HOME="/homes"  # Replace with the NFS shared directory for home directories
 PAST_ADMIN="lab"
 
 
@@ -57,11 +57,11 @@ systemctl restart nslcd
 systemctl restart nscd
 
 
-# make velocitatem sudo
-# check if velocitatem exists in /etc/sudoers
-grep -q "^velocitatem" /etc/sudoers
+# make lab sudo
+# check if lab exists in /etc/sudoers
+grep -q "^lab" /etc/sudoers
 if [ $? -ne 0 ]; then
-    echo "velocitatem ALL=(ALL:ALL) ALL" >> /etc/sudoers
+    echo "lab ALL=(ALL:ALL) ALL" >> /etc/sudoers
 fi
 
 # also add "SUDOers" group to sudoers file if it is not already present
@@ -70,9 +70,9 @@ if [ $? -ne 0 ]; then
     echo "%SUDOers ALL=(ALL:ALL) ALL" >> /etc/sudoers
 fi
 
-# make velocitatem the owner of /home if it is not already
-if [ $(stat -c %U /home) != "velocitatem" ]; then
-    chown -R velocitatem /home
+# make lab the owner of /home if it is not already
+if [ $(stat -c %U /home) != "lab" ]; then
+    chown -R lab /home
 fi
 
 # create failsafe user

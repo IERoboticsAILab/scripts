@@ -1,1 +1,1 @@
-ldapsearch -x -H ldap://10.205.1.2/ -D "cn=admin,dc=colossus" -b "dc=colossus" -s sub "(mail=*)" mail | grep "^mail:" | awk '{print $2}'
+ldapsearch -x -H ldap://10.205.10.3/ -D "cn=admin,dc=prometheus,dc=lab" -b "dc=prometheus,dc=lab" -s sub "(mail=*)" mail | grep "^mail:" | awk '{print $2}'
