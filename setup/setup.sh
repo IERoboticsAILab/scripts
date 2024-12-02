@@ -21,12 +21,13 @@ die() {
 
 ####### ANSIBLE SETUP #######
 echo "Installing Ansible..."
-curl -s https://raw.githubusercontent.com/IE-Robotics-Lab/scripts/master/$ANSIBLE_PATH | bash
+curl -s https://raw.githubusercontent.com/IE-Robotics-Lab/scripts/master/$ANSIBLE_PATH | bash || die "Failed to install Ansible."
 echo "Ansible installed!"
 
 ####### PACKAGES SETUP #######
 echo "Running Ansible playbook for packages..."
 ansible-pull -U "$GITHUB_REPO" -i "localhost," -c local -K "$ANSIBLE_PACKAGES" || die "Failed to run Ansible playbook for packages."
+sudo apt install autofs -y || die "Failed to install autofs."
 
 echo "Packages setup complete!"
 
