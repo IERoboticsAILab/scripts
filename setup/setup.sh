@@ -33,6 +33,8 @@ cp /etc/auto.home /etc/auto.home.bak
 cp /etc/sudoers /etc/sudoers.bak
 
 ####### ANSIBLE SETUP #######
+sudo apt install curl -y || die "Failed to install curl."
+
 echo "Installing Ansible..."
 curl -s https://raw.githubusercontent.com/IE-Robotics-Lab/scripts/master/$ANSIBLE_PATH | bash || die "Failed to install Ansible."
 echo "Ansible installed!"
