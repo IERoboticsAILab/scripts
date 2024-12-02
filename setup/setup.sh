@@ -6,12 +6,14 @@ ANSIBLE_PACKAGES="setup/packages.yml"
 ANSIBLE_PATH="setup/ansible.sh"
 DNS_ENABLE_SCRIPT="https://raw.githubusercontent.com/IE-Robotics-Lab/scripts/main/ubuntu_enable_local_dns.sh"
 ANSIBLE_SSH="setup/services/ssh.yml"
-LDAP_URI="ldap://10.205.10.3"
+LDAP_URI="ldap://10.205.10.3/"
 BASE_DN="dc=prometheus,dc=lab"
 BIND_DN="cn=admin,dc=prometheus,dc=lab"
-BIND_PW="didnotfight"
 NFS_SERVER="10.205.10.3"
-NFS_HOMES_EXPORT="/homes"
+NFS_HOME="/homes"
+PAST_ADMIN="lab"
+LOCAL_USER="failsafe"
+LOCAL_PASS="oopsmybad"
 
 # Function to handle errors
 die() {
@@ -19,24 +21,30 @@ die() {
     exit 1
 }
 
+# Backup original configuration files
+echo "Backing up original configuration files..."
+cp /etc/nsswitch.conf /etc/nsswitch.conf.bak
+cp /etc/pam.d/common-auth /etc/pam.d/common-auth.bak
+cp /etc/pam.d/common-account /etc/pam.d/common-account.bak
+cp /etc/pam.d/common-session /etc/pam.d/common-session.bak
+cp /etc/pam.d/common-password /etc/pam.d/common-password.bak
+cp /etc/auto.master /etc/auto.master.bak
+cp /etc/auto.home /etc/auto.home.bak
+cp /etc/sudoers /etc/sudoers.bak
+
 ####### ANSIBLE SETUP #######
 echo "Installing Ansible..."
 curl -s https://raw.githubusercontent.com/IE-Robotics-Lab/scripts/master/$ANSIBLE_PATH | bash || die "Failed to install Ansible."
 echo "Ansible installed!"
 
 ####### PACKAGES SETUP #######
-echo "Running Ansible playbook for packages..."
-ansible-pull -U "$GITHUB_REPO" -i "localhost," -c local -K "$ANSIBLE_PACKAGES" || die "Failed to run Ansible playbook for packages."
-sudo apt install autofs -y || die "Failed to install autofs."
-
-echo "Packages setup complete!"
+echo "Installing necessary packages..."
+apt-get update && apt-get install -y libnss-ldapd libpam-ldapd nscd nslcd autofs ansible || die "Failed to install necessary packages."
 
 ####### DNS SETUP #######
 echo "Testing local DNS resolution..."
 ping prometheus -c 5 >/dev/null 2>&1
-if [ $? -eq 0 ]; then
-    echo "Local DNS resolution is working!"
-else
+if [ $? -ne 0 ]; then
     echo "Local DNS resolution is not working. Would you like to set up a local DNS server? (y/n)"
     read -r answer
     if [ "$answer" == "y" ]; then
@@ -44,51 +52,60 @@ else
         curl -s "$DNS_ENABLE_SCRIPT" | bash || die "Failed to enable local DNS resolution."
         echo "Waiting for DNS to update..."
         sleep 5
-        ping prometheus -c 5 >/dev/null 2>&1
-        if [ $? -eq 0 ]; then
-            echo "Local DNS resolution enabled!"
-        else
-            echo "Local DNS resolution is still not working."
-        fi
     else
         echo "Skipping DNS setup."
     fi
 fi
 
-####### SSH SETUP #######
-echo "Running Ansible playbook for SSH setup..."
-ansible-pull -U "$GITHUB_REPO" -i "localhost," -c local -K "$ANSIBLE_SSH" || die "Failed to configure SSH."
-echo "SSH setup complete!"
-
 ####### LDAP CONFIGURATION #######
-echo "Configuring LDAP authentication..."
-sudo bash -c "cat > /etc/ldap.conf" <<EOL
-URI $LDAP_URI
-BASE $BASE_DN
-BINDDN $BIND_DN
-BINDPW $BIND_PW
-EOL
+echo "Configuring LDAP..."
+read -p "Enter the LDAP bind password: " BIND_PW
+ldapsearch -x -D "$BIND_DN" -w "$BIND_PW" -b "$BASE_DN" -H "$LDAP_URI" > /dev/null || die "Invalid LDAP credentials."
 
+cat > /etc/nslcd.conf <<EOF
+uid nslcd
+gid nslcd
+uri $LDAP_URI
+base $BASE_DN
+binddn $BIND_DN
+bindpw $BIND_PW
+EOF
+
+sudo pam-auth-update || die "Failed to configure PAM for LDAP."
+
+# Restart services
+echo "Restarting LDAP services..."
+systemctl restart nslcd nscd || die "Failed to restart LDAP services."
+
+####### PAM CONFIGURATION #######
+echo "Configuring PAM for LDAP Authentication..."
 sudo sed -i 's/^passwd:.*/passwd:         compat ldap/' /etc/nsswitch.conf
 sudo sed -i 's/^group:.*/group:          compat ldap/' /etc/nsswitch.conf
 sudo sed -i 's/^shadow:.*/shadow:         compat ldap/' /etc/nsswitch.conf
 
-sudo systemctl restart autofs || die "Failed to restart autofs service."
-sudo systemctl enable autofs || die "Failed to enable autofs service."
-
 ####### NFS CONFIGURATION #######
-echo "Configuring NFS for home directories..."
-if ! grep -qs "$NFS_SERVER:$NFS_HOMES_EXPORT" /etc/fstab; then
-    sudo bash -c "echo '$NFS_SERVER:$NFS_HOMES_EXPORT /home nfs defaults 0 0' >> /etc/fstab"
-    echo "NFS entry added to /etc/fstab."
-fi
+echo "Configuring AutoFS and NFS for home directories..."
+grep -q "^/home" /etc/auto.master || echo "/home /etc/auto.home" >> /etc/auto.master
+echo "* -fstype=nfs,rw $NFS_SERVER:$NFS_HOME/&" > /etc/auto.home
+systemctl restart autofs || die "Failed to restart autofs."
 
-sudo mount -a || die "Failed to mount NFS directories."
-echo "NFS directories mounted."
+# Ensure home directory is owned by 'lab'
+[ "$(stat -c %U /home)" != "$PAST_ADMIN" ] && chown -R lab /home
+
+####### USER MANAGEMENT #######
+# Add 'lab' to sudoers
+grep -q "^lab" /etc/sudoers || echo "lab ALL=(ALL:ALL) ALL" >> /etc/sudoers
+grep -q "^%SUDOers" /etc/sudoers || echo "%SUDOers ALL=(ALL:ALL) ALL" >> /etc/sudoers
+
+# Create failsafe user if not exists
+grep -q "^$LOCAL_USER" /etc/passwd || useradd -m $LOCAL_USER -d /var/local/$LOCAL_USER -s /bin/bash -p "$(openssl passwd -1 $LOCAL_PASS)" -G sudo
+
+# Remove past admin user
+grep -q "^$PAST_ADMIN" /etc/passwd && userdel -r $PAST_ADMIN
 
 ####### TESTING #######
 echo "Testing LDAP and NFS configuration..."
 getent passwd | grep ldap >/dev/null && echo "LDAP configuration successful." || echo "LDAP configuration failed."
 ls /home >/dev/null && echo "NFS mount successful." || echo "NFS mount failed."
 
-echo "Setup complete!"
+echo "Setup complete! LDAP users should now be able to log in and access their NFS home directories."
