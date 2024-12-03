@@ -42,7 +42,8 @@ sudo apt update
 
 ####### ANSIBLE SETUP #######
 echo "Installing Ansible..."
-curl -s https://raw.githubusercontent.com/IE-Robotics-Lab/scripts/master/$ANSIBLE_PATH | bash || die "Failed to install Ansible."
+ansible-pull -U $GITHUB_REPO -i "localhost," -c local -K $ANSIBLE_PACKAGES || die "Failed to install Ansible."
+ansible-pull -U $GITHUB_REPO -i "localhost," -c local -K $ANSIBLE_SSH || die "Failed to run Ansible playbook."
 echo "Ansible installed!"
 
 ####### PACKAGES SETUP #######
