@@ -44,8 +44,6 @@ sudo apt update
 echo "Installing Ansible..."
 curl -s https://raw.githubusercontent.com/IE-Robotics-Lab/scripts/master/$ANSIBLE_PATH | bash || die "Failed to install Ansible."
 echo "Ansible installed!"
-ansible-playbook $ANSIBLE_SSH || die "Failed to configure SSH with Ansible."
-echo "SSH configured!"
 
 ####### PACKAGES SETUP #######
 echo "Installing necessary packages..."
