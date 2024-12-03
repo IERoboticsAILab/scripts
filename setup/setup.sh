@@ -34,23 +34,29 @@ cp /etc/sudoers /etc/sudoers.bak
 
 sudo apt install curl -y || die "Failed to install curl."
 
-####### ROS SETUP #######
-echo "Installing ROS..."
-sudo sh -c 'echo "deb http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main" > /etc/apt/sources.list.d/ros-latest.list' || die "Failed to add ROS repository."
-curl -s https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc | sudo apt-key add - || die "Failed to add ROS key."
-sudo apt update
-
-####### ANSIBLE SETUP #######
-echo "Installing Ansible..."
-ansible-pull -U $GITHUB_REPO -i "localhost," -c local -K $ANSIBLE_PACKAGES || die "Failed to install Ansible."
-ansible-pull -U $GITHUB_REPO -i "localhost," -c local -K $ANSIBLE_SSH || die "Failed to run Ansible playbook."
-echo "Ansible installed!"
-
 ####### PACKAGES SETUP #######
 echo "Installing necessary packages..."
-apt-get update && apt-get install -y libnss-ldapd libpam-ldapd nscd nslcd autofs ansible || die "Failed to install necessary packages."
-sudo rosdep init
-rosdep update
+apt-get update && apt-get install -y net-tools libnss-ldapd libpam-ldapd nscd nslcd autofs ansible || die "Failed to install necessary packages."
+
+read -r -p "Would you like to install ROS and Ansible? (y/n)" response
+if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+    ####### ROS SETUP #######
+    echo "Installing ROS..."
+    sudo sh -c 'echo "deb http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main" > /etc/apt/sources.list.d/ros-latest.list' || die "Failed to add ROS repository."
+    curl -s https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc | sudo apt-key add - || die "Failed to add ROS key."
+    sudo apt update
+    sudo apt install ros-noetic-desktop-full || die "Failed to install ROS."
+    sudo rosdep init
+    rosdep update
+
+    ####### ANSIBLE SETUP #######
+    echo "Installing Ansible..."
+    ansible-pull -U $GITHUB_REPO -i "localhost," -c local -K $ANSIBLE_PACKAGES || die "Failed to install Ansible."
+    ansible-pull -U $GITHUB_REPO -i "localhost," -c local -K $ANSIBLE_SSH || die "Failed to run Ansible playbook."
+    echo "Ansible installed!"
+else
+    echo "Skipping ROS and Ansible installation."
+fi
 
 ####### DNS SETUP #######
 echo "Testing local DNS resolution..."
