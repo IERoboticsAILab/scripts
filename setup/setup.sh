@@ -32,9 +32,15 @@ cp /etc/auto.master /etc/auto.master.bak
 cp /etc/auto.home /etc/auto.home.bak
 cp /etc/sudoers /etc/sudoers.bak
 
-####### ANSIBLE SETUP #######
 sudo apt install curl -y || die "Failed to install curl."
 
+####### ROS SETUP #######
+echo "Installing ROS..."
+sudo sh -c 'echo "deb http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main" > /etc/apt/sources.list.d/ros-latest.list' || die "Failed to add ROS repository."
+curl -s https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc | sudo apt-key add - || die "Failed to add ROS key."
+sudo apt update
+
+####### ANSIBLE SETUP #######
 echo "Installing Ansible..."
 curl -s https://raw.githubusercontent.com/IE-Robotics-Lab/scripts/master/$ANSIBLE_PATH | bash || die "Failed to install Ansible."
 echo "Ansible installed!"
@@ -42,6 +48,8 @@ echo "Ansible installed!"
 ####### PACKAGES SETUP #######
 echo "Installing necessary packages..."
 apt-get update && apt-get install -y libnss-ldapd libpam-ldapd nscd nslcd autofs ansible || die "Failed to install necessary packages."
+sudo rosdep init
+rosdep update
 
 ####### DNS SETUP #######
 echo "Testing local DNS resolution..."

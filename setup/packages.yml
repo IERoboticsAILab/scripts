@@ -44,3 +44,20 @@
       apt:
         name: docker.io
         state: present
+
+    - name: Install ROS
+      apt:
+        name: 
+          - ros-noetic-desktop-full
+          - python3-rosdep
+          - python3-rosinstall
+          - python3-rosinstall-generator
+          - python3-wstool build-essential
+          - python3-rosdep
+        state: present
+
+    - name: Install VNC
+      apt:
+        name:
+          - tigervnc-standalone-server
+        state: present
