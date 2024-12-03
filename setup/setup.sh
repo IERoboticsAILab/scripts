@@ -106,7 +106,7 @@ echo "* -fstype=nfs,rw $NFS_SERVER:$NFS_HOME/&" > /etc/auto.home
 systemctl restart autofs || die "Failed to restart autofs."
 
 # Ensure home directory is owned by 'lab'
-[ "$(stat -c %U /home)" != "$PAST_ADMIN" ] && chown -R lab /home
+# [ "$(stat -c %U /home)" != "$PAST_ADMIN" ] && chown -R lab /home
 
 ####### USER MANAGEMENT #######
 # Add 'lab' to sudoers
