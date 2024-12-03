@@ -1,11 +1,11 @@
 ---
-- name: Install and enable SSH server
+- name: Install, configure, and enable SSH server
   hosts: all
   become: yes
   tasks:
     - name: Ensure SSH package is installed (Debian/Ubuntu)
       apt:
-        name: ssh
+        name: openssh-server
         state: present
       when: ansible_os_family == "Debian"
 
@@ -14,6 +14,27 @@
         name: openssh-server
         state: present
       when: ansible_os_family == "RedHat"
+
+    - name: Ensure SSH configuration file is backed up
+      copy:
+        src: /etc/ssh/sshd_config
+        dest: /etc/ssh/sshd_config.bak
+        remote_src: yes
+      notify: Restart SSH
+
+    - name: Configure SSH to disable root login
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?PermitRootLogin'
+        line: 'PermitRootLogin no'
+      notify: Restart SSH
+
+    - name: Configure SSH to use key-based authentication only
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?PasswordAuthentication'
+        line: 'PasswordAuthentication no'
+      notify: Restart SSH
 
     - name: Ensure SSH service is enabled and started (Debian/Ubuntu)
       service:
@@ -28,3 +49,9 @@
         state: started
         enabled: yes
       when: ansible_os_family == "RedHat"
+
+  handlers:
+    - name: Restart SSH
+      service:
+        name: "{{ 'ssh' if ansible_os_family == 'Debian' else 'sshd' }}"
+        state: restarted

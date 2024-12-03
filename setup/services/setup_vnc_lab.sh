@@ -60,6 +60,16 @@ systemctl daemon-reload
 systemctl enable vncserver@$VNC_USER.service
 systemctl start vncserver@$VNC_USER.service
 
+# Configure UFW to allow VNC traffic
+echo "Configuring UFW to allow VNC traffic on port 5901..."
+ufw allow 5901/tcp
+
+# Enable UFW if not already enabled
+if [[ $(ufw status | grep -c "Status: inactive") -gt 0 ]]; then
+  echo "Enabling UFW..."
+  ufw enable
+fi
+
 # Final message
 echo "VNC server setup complete. It will start automatically on boot."
 echo "You can now connect to $VNC_USER's VNC server at <server-ip>:5901 with the password provided."
