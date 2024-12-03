@@ -117,7 +117,7 @@ grep -q "^%SUDOers" /etc/sudoers || echo "%SUDOers ALL=(ALL:ALL) ALL" >> /etc/su
 grep -q "^$LOCAL_USER" /etc/passwd || useradd -m $LOCAL_USER -d /var/local/$LOCAL_USER -s /bin/bash -p "$(openssl passwd -1 $LOCAL_PASS)" -G sudo
 
 # Remove past admin user
-grep -q "^$PAST_ADMIN" /etc/passwd && userdel -r $PAST_ADMIN
+# grep -q "^$PAST_ADMIN" /etc/passwd && userdel -r $PAST_ADMIN
 
 ####### TESTING #######
 echo "Testing LDAP and NFS configuration..."
