@@ -54,7 +54,6 @@
           - python3-rosinstall-generator
           - python3-wstool 
           - build-essential
-          - python3-rosdep
         state: present
 
     - name: Install VNC
