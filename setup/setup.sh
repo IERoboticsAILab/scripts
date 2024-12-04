@@ -35,9 +35,6 @@ cp /etc/sudoers /etc/sudoers.bak
 sudo apt install curl -y || die "Failed to install curl."
 
 ####### PACKAGES SETUP #######
-echo "Installing necessary packages..."
-apt-get update && apt-get install -y net-tools libnss-ldapd libpam-ldapd nscd nslcd autofs ansible || die "Failed to install necessary packages."
-
 read -r -p "Would you like to install Ansible packages? (y/n)" response
 if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
     ####### ROS SETUP #######

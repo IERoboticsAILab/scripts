@@ -13,8 +13,13 @@
         name:
           - vim
           - git
-          - curl
           - wget
+          - net-tools
+          - libnss-ldapd
+          - libpam-ldapd
+          - nscd
+          - nslcd
+          - autofs
         state: present
 
 
