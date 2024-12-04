@@ -47,7 +47,7 @@
 
     - name: Add ROS repository
       apt_repository:
-        repo: "deb http://packages.ros.org/ros/ubuntu {{ ansible_distribution_release }} main"
+        repo: "deb  http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main"
         state: present
 
     - name: Add ROS GPG key
