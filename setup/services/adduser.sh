@@ -1,5 +1,3 @@
-#!/bin/bash
-
 # Create the /local directory and set permissions
 sudo mkdir /local
 sudo chmod 755 /local
