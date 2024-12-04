@@ -1,6 +1,6 @@
 ---
 - name: Ensure key packages are installed
-  hosts: all
+  hosts: localhost
   become: yes
 
   tasks:

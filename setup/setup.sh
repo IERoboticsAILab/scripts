@@ -40,8 +40,8 @@ read -r -p "Would you like to install Ansible packages? (y/n)" response
 if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
     ####### ANSIBLE SETUP #######
     echo "Installing Ansible..."
-    ansible-pull -U $GITHUB_REPO -i "all," -c local -K $ANSIBLE_PACKAGES || die "Failed to install Ansible."
-    ansible-pull -U $GITHUB_REPO -i "all," -c local -K $ANSIBLE_SSH || die "Failed to run Ansible playbook."
+    ansible-pull -U $GITHUB_REPO -i "localhost," -c local -K $ANSIBLE_PACKAGES || die "Failed to install Ansible."
+    ansible-pull -U $GITHUB_REPO -i "localhost," -c local -K $ANSIBLE_SSH || die "Failed to run Ansible playbook."
     echo "Ansible installed!"
 else
     echo "Skipping ROS and Ansible installation."
