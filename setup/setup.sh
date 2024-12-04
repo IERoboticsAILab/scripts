@@ -33,21 +33,15 @@ cp /etc/auto.master /etc/auto.master.bak
 cp /etc/auto.home /etc/auto.home.bak
 cp /etc/sudoers /etc/sudoers.bak
 
-sudo apt install curl libnss-ldapd libpam-ldapd nscd nslcd autofs -y || die "Failed to install curl."
+sudo apt install curl libnss-ldapd libpam-ldapd nscd nslcd autofs ansible -y || die "Failed to install curl."
 
 ####### PACKAGES SETUP #######
 read -r -p "Would you like to install Ansible packages? (y/n)" response
 if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
-    ####### ROS SETUP #######
-    echo "Installing ROS..."
-    sudo sh -c 'echo "deb http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main" > /etc/apt/sources.list.d/ros-latest.list' || die "Failed to add ROS repository."
-    curl -s https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc | sudo apt-key add - || die "Failed to add ROS key."
-    sudo apt update
-
     ####### ANSIBLE SETUP #######
     echo "Installing Ansible..."
-    ansible-pull -U $GITHUB_REPO -i "localhost," -c local -K $ANSIBLE_PACKAGES || die "Failed to install Ansible."
-    ansible-pull -U $GITHUB_REPO -i "localhost," -c local -K $ANSIBLE_SSH || die "Failed to run Ansible playbook."
+    ansible-pull -U $GITHUB_REPO -i "all," -c local -K $ANSIBLE_PACKAGES || die "Failed to install Ansible."
+    ansible-pull -U $GITHUB_REPO -i "all," -c local -K $ANSIBLE_SSH || die "Failed to run Ansible playbook."
     echo "Ansible installed!"
 else
     echo "Skipping ROS and Ansible installation."
