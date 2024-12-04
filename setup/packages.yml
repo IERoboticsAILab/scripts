@@ -15,11 +15,6 @@
           - git
           - wget
           - net-tools
-          - libnss-ldapd
-          - libpam-ldapd
-          - nscd
-          - nslcd
-          - autofs
         state: present
 
 

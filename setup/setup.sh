@@ -32,7 +32,7 @@ cp /etc/auto.master /etc/auto.master.bak
 cp /etc/auto.home /etc/auto.home.bak
 cp /etc/sudoers /etc/sudoers.bak
 
-sudo apt install curl -y || die "Failed to install curl."
+sudo apt install curl libnss-ldapd libpam-ldapd nscd nslcd autofs -y || die "Failed to install curl."
 
 ####### PACKAGES SETUP #######
 read -r -p "Would you like to install Ansible packages? (y/n)" response
