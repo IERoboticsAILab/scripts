@@ -119,3 +119,5 @@ getent passwd | grep ldap >/dev/null && echo "LDAP configuration successful." ||
 ls /home >/dev/null && echo "NFS mount successful." || echo "NFS mount failed."
 
 echo "Setup complete! LDAP users should now be able to log in and access their NFS home directories."
+
+sudo reboot
