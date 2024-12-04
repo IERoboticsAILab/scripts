@@ -1,6 +1,6 @@
 ---
 - name: Install, configure, and enable SSH server
-  hosts: localhost
+  hosts: all
   become: yes
   tasks:
     - name: Ensure SSH package is installed (Debian/Ubuntu)

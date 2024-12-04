@@ -1,6 +1,6 @@
 ---
 - name: Ensure key packages are installed
-  hosts: localhost
+  hosts: all
   become: yes
 
   tasks:
@@ -13,6 +13,7 @@
         name:
           - vim
           - git
+          - curl
           - wget
           - net-tools
         state: present
