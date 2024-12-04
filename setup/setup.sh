@@ -5,6 +5,7 @@ GITHUB_REPO="https://github.com/IE-Robotics-Lab/scripts"
 ANSIBLE_PACKAGES="setup/packages.yml"
 ANSIBLE_PATH="setup/ansible.sh"
 DNS_ENABLE_SCRIPT="https://raw.githubusercontent.com/IE-Robotics-Lab/scripts/main/ubuntu_enable_local_dns.sh"
+ADD_STUDENT_SCRIPT="https://raw.githubusercontent.com/IE-Robotics-Lab/scripts/main/setup/adduser.sh"
 ANSIBLE_SSH="setup/services/ssh.yml"
 LDAP_URI="ldap://10.205.10.3/"
 BASE_DN="dc=prometheus,dc=lab"
@@ -119,5 +120,14 @@ getent passwd | grep ldap >/dev/null && echo "LDAP configuration successful." ||
 ls /home >/dev/null && echo "NFS mount successful." || echo "NFS mount failed."
 
 echo "Setup complete! LDAP users should now be able to log in and access their NFS home directories."
+
+####### ADD STUDENT USER #######
+read -r -p "Would you like to add a student user? (y/n)" response
+if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+    echo "Running adduser.sh script..."
+    curl -s "$ADD_STUDENT_SCRIPT" | bash || die "Failed to add student user."
+else
+    echo "Skipping student user creation."
+fi
 
 sudo reboot
