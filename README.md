@@ -1,9 +1,4 @@
-# scripts
-
-
-## [Generic Setup Script](https://github.com/IE-Robotics-Lab/scripts/tree/main/setup)
-
-
+## [Platforming scripts repo](https://github.com/IE-Robotics-Lab/scripts/tree/main/setup)
 
 ## How pull any ansible playbook
 1. Find the playbook you want to pull on the repository. Get the URL of the playbook.
