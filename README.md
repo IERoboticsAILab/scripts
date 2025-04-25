@@ -7,3 +7,4 @@
 BOOK="path/to/playbook.yml"
 ansible-pull -U https://github.com/IE-Robotics-Lab/ -i "localhost," -c local -K $BOOK
 ```
+
