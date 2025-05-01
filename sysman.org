@@ -1,0 +1,105 @@
+* System management scripts
+
+** Get emails
+
+#+begin_src bash :tangle misc/get_all_emails.sh
+ldapsearch -x -H ldap://10.205.10.3/ -D "cn=admin,dc=prometheus,dc=lab" -b "dc=prometheus,dc=lab" -s sub "(mail=*)" mail | grep "^mail:" | awk '{print $2}'
+#+end_src
+
+** Get hosts
+
+#+begin_src bash :tangle misc/get_all_hosts.sh
+sudo cat /var/lib/docker/volumes/network_pihole-etc/_data/custom.list >> hosts.txt
+#+end_src
+
+** Register users in LAM
+
+# Bulk Registration Script
+
+> For when you need to register a lot of users at once, like a new batch of students or guests in a workshop.
+
+For the bulk registration of users in LAM, we can use this script to create a `.csv` file with the users' data and then upload it to LAM. This script will create a new `.csv` file with the users' data and their passwords.
+
+Create a Google Sheet with these columns:
+
+| First Name | Last Name | Email |
+|--|--|--|
+| ... | ... | ... |
+
+They must be strictly this syntax.
+
+1. Have all the new users fill out their data into this column, you can also create a google form to fill out this new sheet.
+2. Export the file as a `.csv` and rename it to `users.csv`
+3. Put it into the same directory as the script `main.py` from this directory
+4. Run the file `python main.py` which will create a new file `new_users.csv`
+5. Open LAM in colossus, sign-in as admin, click on "File Upload" in the "Users" page
+6. You will be prompted for the CSV file, upload `new_users.csv`
+7. Follow instructions on the screen.
+
+
+## About
+All new users will be created with the following details:
+**Username**: All before the _@_ in their email
+**Passsword**: `username`__
+
+So if we have a user like:
+
+| First Name | Last Name | Email |
+|--|--|--|
+| Johny | Doey | johny@doey.com |
+
+Their username will be `johny` and password `johny__`.
+
+> [!IMPORTANT]
+> All users should change their password on first login by running `passwd`
+
+#+begin_src python tangle: misc/bulk_registration/main.py
+import random
+import csv
+
+
+# open csv file with users
+with open('users.csv', 'r') as file: # fname, lname, email
+    reader = csv.reader(file)
+    users = list(reader)
+    # turn to list of jsons with keys
+    users = [dict(zip(users[0], user)) for user in users[1:]]
+    print("Users: ", users)
+    print("# of users: ", len(users))
+
+
+new_users = []
+for user in users:
+    first_name = user.get("First Name")
+    last_name = user.get("Last Name")
+    email = user.get("Email")
+    if email:
+        uname = email.split("@")[0]
+    if not (first_name and last_name and email and uname):
+        print("Invalid user: ", user)
+        continue
+    initials = first_name[0] + "." + last_name[0] + "."
+
+    new = {
+        'dn_suffix': 'ou=people,dc=colossus',
+        'dn_rdn': 'uid',
+        # email
+        "inetOrgPerson_firstName": first_name,
+        "inetOrgPerson_lastName": last_name,
+        "inetOrgPerson_initials": initials,
+        "inetOrgPerson_email": email if email else "TBD",
+        "posixAccount_userName": uname,
+        "posixAccount_group": "guests",
+        "posixAccount_password": uname + "__",
+    }
+
+    new_users.append(new)
+
+# write to new csv file
+with open('new_users.csv', 'w') as file:
+    writer = csv.DictWriter(file, fieldnames=new_users[0].keys())
+    writer.writeheader()
+    writer.writerows(new_users)
+    print("New users: ", new_users)
+
+#+end_src
