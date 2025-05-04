@@ -1,14 +1,12 @@
-
 #!/bin/bash
 
 # make a backup of the original files before modifying them
+echo "[LDAP] Backing up original configuration files..."
 cp /etc/nsswitch.conf /etc/nsswitch.conf.bak
 cp /etc/pam.d/common-auth /etc/pam.d/common-auth.bak
 cp /etc/pam.d/common-account /etc/pam.d/common-account.bak
 cp /etc/pam.d/common-session /etc/pam.d/common-session.bak
 cp /etc/pam.d/common-password /etc/pam.d/common-password.bak
-cp /etc/auto.master /etc/auto.master.bak
-cp /etc/auto.home /etc/auto.home.bak
 cp /etc/sudoers /etc/sudoers.bak
 
 
@@ -17,12 +15,8 @@ echo "Installing necessary packages..."
 apt-get update && apt-get install -y libnss-ldapd libpam-ldapd nscd nslcd autofs
 # automatically adds ldap to nsswitch.conf
 
-
-# Variables
-LDAP_URI="ldap://10.205.10.3/"
-BASE_DN="dc=prometheus,dc=lab"
-BIND_DN="cn=admin,dc=prometheus,dc=lab"
-# prompt for the password -s can sometimes be an ilegal option
+# prompt for the password
+# (-s can sometimes be an ilegal option)
 read -p "Enter the LDAP bind password: " BIND_PW
 # check if the password is correct
 ldapsearch -x -D $BIND_DN -w $BIND_PW -b $BASE_DN -H $LDAP_URI > /dev/null
@@ -49,14 +43,25 @@ EOF
 # PAM configuration for LDAP Authentication
 echo "Configuring PAM for LDAP Authentication..."
 
-sudo pam-auth-update
+pam-auth-update || die "Failed to configure PAM for LDAP."
 
 # Restart nslcd and nscd to apply changes
-echo "Restarting services..."
-systemctl restart nslcd
-systemctl restart nscd
+echo "[LDAP] Restarting services..."
+systemctl restart nslcd nscd || die "Failed to restart LDAP services."
 
+####### PAM CONFIGURATION #######
+echo "[LDAP] Configuring PAM for LDAP Authentication..."
+sed -i 's/^passwd:.*/passwd:         compat ldap/' /etc/nsswitch.conf
+sed -i 's/^group:.*/group:          compat ldap/' /etc/nsswitch.conf
+sed -i 's/^shadow:.*/shadow:         compat ldap/' /etc/nsswitch.conf
 
+# add "SUDOers" group to sudoers file (if it is not already present)
+grep -q "^%SUDOers" /etc/sudoers
+if [ $? -ne 0 ]; then
+    echo "%SUDOers ALL=(ALL:ALL) ALL" >> /etc/sudoers
+fi
+
+# !!!! migrate to users.sh
 # make lab sudo
 # check if lab exists in /etc/sudoers
 grep -q "^lab" /etc/sudoers
@@ -64,50 +69,32 @@ if [ $? -ne 0 ]; then
     echo "lab ALL=(ALL:ALL) ALL" >> /etc/sudoers
 fi
 
-# also add "SUDOers" group to sudoers file if it is not already present
-grep -q "^%SUDOers" /etc/sudoers
-if [ $? -ne 0 ]; then
-    echo "%SUDOers ALL=(ALL:ALL) ALL" >> /etc/sudoers
-fi
 
 # make lab the owner of /home if it is not already
 if [ $(stat -c %U /home) != "lab" ]; then
     chown -R lab /home
 fi
 
-# create failsafe user
-LOCAL_USER="failsafe"
-LOCAL_PASS="oopsmybad"
-# check if users exists or not
+# !!!! admin user (failsafe) should be created during ubuntu install...
 
-grep -q "^$LOCAL_USER" /etc/passwd
-if [ $? -ne 0 ]; then
-    echo "Creating failsafe user..."
-    useradd -m $LOCAL_USER -d /var/local/$LOCAL_USER -s /bin/bash -p $(openssl passwd -1 $LOCAL_PASS) -G sudo
-    chown -R $LOCAL_USER /var/local/$LOCAL_USER
-fi
+# create failsafe user
+#LOCAL_USER="failsafe"
+#LOCAL_PASS="*******"
+
+
+# check if users exists or not
+#grep -q "^$LOCAL_USER" /etc/passwd
+#if [ $? -ne 0 ]; then
+#    echo "Creating failsafe user..."
+#    useradd -m $LOCAL_USER -d /var/local/$LOCAL_USER -s /bin/bash -p $(openssl passwd -1 $LOCAL_PASS) -G sudo
+#    chown -R $LOCAL_USER /var/local/$LOCAL_USER
+#fi
 
 # remove past admin user if it exists
-grep -q "^$PAST_ADMIN" /etc/passwd
-if [ $? -eq 0 ]; then
-    echo "Removing past admin user..."
-    userdel -r $PAST_ADMIN
-fi
+#grep -q "^$PAST_ADMIN" /etc/passwd
+#if [ $? -eq 0 ]; then
+#    echo "Removing past admin user..."
+#    userdel -r $PAST_ADMIN
+#fi
 
-
-# Configure autofs
-echo "Configuring AutoFS..."
-# if not already present, add the following line to /etc/auto.master
-grep -q "^/home" /etc/auto.master
-if [ $? -ne 0 ]; then
-    echo "/home /etc/auto.home" >> /etc/auto.master
-fi
-if [ ! -f /etc/auto.home ]; then
-    touch /etc/auto.home
-    echo "* -fstype=nfs,rw $NFS_SERVER:$NFS_HOME/&" > /etc/auto.home
-fi
-
-# Restart autofs to apply the configuration
-systemctl restart autofs
-
-echo "Configuration complete. LDAP users should now be able to log in and access their NFS home directories."
+echo "[LDAP] Configuration complete. LDAP users should now be able to log in and access their NFS home directories."

@@ -1,20 +1,12 @@
 #!/bin/bash
 
-# Define variables
+# Service variables moved to config file
 GITHUB_REPO="https://github.com/IE-Robotics-Lab/scripts"
 ANSIBLE_PACKAGES="setup/packages.yml"
 ANSIBLE_PATH="setup/ansible.sh"
 DNS_ENABLE_SCRIPT="https://raw.githubusercontent.com/IE-Robotics-Lab/scripts/main/ubuntu_enable_local_dns.sh"
 ADD_STUDENT_SCRIPT="https://raw.githubusercontent.com/IE-Robotics-Lab/scripts/main/setup/adduser.sh"
 ANSIBLE_SSH="setup/services/ssh.yml"
-LDAP_URI="ldap://10.205.10.3/"
-BASE_DN="dc=prometheus,dc=lab"
-BIND_DN="cn=admin,dc=prometheus,dc=lab"
-NFS_SERVER="10.205.10.3"
-NFS_HOME="/homes"
-PAST_ADMIN="admin"
-LOCAL_USER="failsafe"
-LOCAL_PASS="oopsmybad"
 
 # Function to handle errors
 die() {
@@ -22,18 +14,8 @@ die() {
     exit 1
 }
 
-# Backup original configuration files
-echo "Backing up original configuration files..."
-cp /etc/nsswitch.conf /etc/nsswitch.conf.bak
-cp /etc/pam.d/common-auth /etc/pam.d/common-auth.bak
-cp /etc/pam.d/common-account /etc/pam.d/common-account.bak
-cp /etc/pam.d/common-session /etc/pam.d/common-session.bak
-cp /etc/pam.d/common-password /etc/pam.d/common-password.bak
-cp /etc/auto.master /etc/auto.master.bak
-cp /etc/auto.home /etc/auto.home.bak
-cp /etc/sudoers /etc/sudoers.bak
-
-sudo apt install curl libnss-ldapd libpam-ldapd nscd nslcd autofs ansible -y || die "Failed to install curl."
+# !!!! install each package set inside its own task script
+apt install curl libnss-ldapd libpam-ldapd nscd nslcd autofs ansible -y || die "Failed to install curl."
 
 ####### PACKAGES SETUP #######
 read -r -p "Would you like to install Ansible packages? (y/n)" response
@@ -64,50 +46,18 @@ if [ $? -ne 0 ]; then
 fi
 
 ####### LDAP CONFIGURATION #######
-echo "Configuring LDAP..."
-read -p "Enter the LDAP bind password: " BIND_PW
-ldapsearch -x -D "$BIND_DN" -w "$BIND_PW" -b "$BASE_DN" -H "$LDAP_URI" > /dev/null || die "Invalid LDAP credentials."
+# reuse services/ldap.sh script
+./setup/services/ldap.sh
 
-cat > /etc/nslcd.conf <<EOF
-uid nslcd
-gid nslcd
-uri $LDAP_URI
-base $BASE_DN
-binddn $BIND_DN
-bindpw $BIND_PW
-EOF
-
-sudo pam-auth-update || die "Failed to configure PAM for LDAP."
-
-# Restart services
-echo "Restarting LDAP services..."
-systemctl restart nslcd nscd || die "Failed to restart LDAP services."
-
-####### PAM CONFIGURATION #######
-echo "Configuring PAM for LDAP Authentication..."
-sudo sed -i 's/^passwd:.*/passwd:         compat ldap/' /etc/nsswitch.conf
-sudo sed -i 's/^group:.*/group:          compat ldap/' /etc/nsswitch.conf
-sudo sed -i 's/^shadow:.*/shadow:         compat ldap/' /etc/nsswitch.conf
 
 ####### NFS CONFIGURATION #######
-echo "Configuring AutoFS and NFS for home directories..."
-grep -q "^/home" /etc/auto.master || echo "/home /etc/auto.home" >> /etc/auto.master
-echo "* -fstype=nfs,rw $NFS_SERVER:$NFS_HOME/&" > /etc/auto.home
-systemctl restart autofs || die "Failed to restart autofs."
+# reuse services/nfs.sh script
+./setup/services/nfs.sh
 
+
+# !!!! is it actually needed?
 # Ensure home directory is owned by 'lab'
 [ "$(stat -c %U /home)" != "$PAST_ADMIN" ] && chown -R lab /home
-
-####### USER MANAGEMENT #######
-# Add 'lab' to sudoers
-grep -q "^lab" /etc/sudoers || echo "lab ALL=(ALL:ALL) ALL" >> /etc/sudoers
-grep -q "^%SUDOers" /etc/sudoers || echo "%SUDOers ALL=(ALL:ALL) ALL" >> /etc/sudoers
-
-# Create failsafe user if not exists
-grep -q "^$LOCAL_USER" /etc/passwd || useradd -m $LOCAL_USER -d /var/local/$LOCAL_USER -s /bin/bash -p "$(openssl passwd -1 $LOCAL_PASS)" -G sudo
-
-# Remove past admin user
-grep -q "^$PAST_ADMIN" /etc/passwd && userdel -r $PAST_ADMIN
 
 ####### TESTING #######
 echo "Testing LDAP and NFS configuration..."
@@ -115,6 +65,9 @@ getent passwd | grep ldap >/dev/null && echo "LDAP configuration successful." ||
 ls /home >/dev/null && echo "NFS mount successful." || echo "NFS mount failed."
 
 echo "Setup complete! LDAP users should now be able to log in and access their NFS home directories."
+
+####### USER MANAGEMENT #######
+# Add 'lab' to sudoers - users.sh
 
 ####### ADD STUDENT USER #######
 read -r -p "Would you like to add a student user? (y/n)" response
@@ -125,4 +78,6 @@ else
     echo "Skipping student user creation."
 fi
 
-sudo reboot
+echo "Rebooting in 10 seconds..."
+sleep 10
+reboot
