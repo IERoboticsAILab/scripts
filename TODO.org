@@ -1,0 +1,6 @@
+TODO:
+
+- remove credentials from script
+- migrate ansible code to bash
+- make tasks optional depending upon inventory
+- update documentation and comments
