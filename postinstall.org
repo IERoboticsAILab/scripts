@@ -1,6 +1,7 @@
-* Post-install scripts
+* Post-install
 
-** post-install > shell > common notes
+* Post-install > shell scripts
+** TODO post-install > shell > common notes
 
 Assume:
 - `[uname]` is your LDAP username.
@@ -173,15 +174,18 @@ fi
 systemctl restart autofs || die "Failed to restart autofs."
 #+end_src
 
-** post-install > shell > setup.sh
+
+** TODO post-install > shell > bootstrap
+
+(in case it is more convenient to curl a bootstrap script than cloning the whole repo)
+
+** TODO post-install > shell > setup.sh
 
 #+begin_src bash :tangle setup/setup.sh
 #!/bin/bash
 
 # Service variables moved to config file
 GITHUB_REPO="https://github.com/IE-Robotics-Lab/scripts"
-ANSIBLE_PACKAGES="setup/packages.yml"
-ANSIBLE_PATH="setup/ansible.sh"
 DNS_ENABLE_SCRIPT="https://raw.githubusercontent.com/IE-Robotics-Lab/scripts/main/ubuntu_enable_local_dns.sh"
 ADD_STUDENT_SCRIPT="https://raw.githubusercontent.com/IE-Robotics-Lab/scripts/main/setup/adduser.sh"
 ANSIBLE_SSH="setup/services/ssh.yml"
@@ -196,17 +200,21 @@ die() {
 apt install curl libnss-ldapd libpam-ldapd nscd nslcd autofs ansible -y || die "Failed to install curl."
 
 ####### PACKAGES SETUP #######
-read -r -p "Would you like to install Ansible packages? (y/n)" response
-if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
-    ####### ANSIBLE SETUP #######
-    echo "Installing Ansible..."
-    curl -s https://raw.githubusercontent.com/IE-Robotics-Lab/scripts/master/$ANSIBLE_PATH | bash
-    ansible-pull -U $GITHUB_REPO -i "localhost," -c local -K $ANSIBLE_PACKAGES || die "Failed to install Ansible."
-    ansible-pull -U $GITHUB_REPO -i "localhost," -c local -K $ANSIBLE_SSH || die "Failed to run Ansible playbook."
-    echo "Ansible installed!"
+read -r -p "Would you like to install software packages? (y/n)" response
+if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then  
+    software/essentials.sh
+    software/python-packages.sh
+    software/docker.sh    
+    software/vnc.sh
+    software/ros.sh  
+
+    echo "Packages installed"
 else
-    echo "Skipping ROS and Ansible installation."
+    echo "Skipping ROS and software installation..."
 fi
+
+# !!!! script to setup SSH
+# ansible-pull -U $GITHUB_REPO -i "localhost," -c local -K $ANSIBLE_SSH || die "Failed to run Ansible playbook."
 
 ####### DNS SETUP #######
 echo "Testing local DNS resolution..."
@@ -272,7 +280,7 @@ sudo apt-get install -y git
 
 #+end_src
 
-** shell > hostname                                                  :unused:
+** TODO shell > hostname                                             :unused:
 
 #+begin_src bash tangle: setup/services/hosts.sh
 #!/bin/bash
@@ -397,9 +405,114 @@ echo "Verification of changes:"
 ls -la /home
 #+end_src
 
-** postinstall > ansible
 
-*** ansible > How to pull ansible playbooks
+** shell > software
+
+Software installation scripts live inside [[file:software/][software]] directory
+
+Currently software is installed directly into the OS, but the plan is to try
+to install as few as possible as OS packages and move towards (user) software environments
+
+*** software > essentials
+
+#+begin_src bash :tangle software/essentials.sh
+#!/bin/bash
+apt-get update
+apt-get install -y vim git curl wget net-tools python3 python3-pip
+# Update OS pip to latest
+pip3 update
+#+end_src
+
+*** software > python packages
+
+#+begin_src bash :tangle software/python-packages.sh
+#!/bin/bash
+pip install virtualenv numpy pandas
+#+end_src
+
+*** software > docker
+
+#+begin_src bash :tangle software/docker.sh
+#!/bin/bash
+apt-get install -y docker.io
+#+end_src
+
+*** software > VNC
+
+#+begin_src bash :tangle software/vnc.sh
+#!/bin/bash
+apt-get install -y tigervnc-standalone-server
+#+end_src
+
+*** software > xRDP
+
+#+begin_src bash :tangle software/xrdp.sh
+#!/bin/bash
+apt-get install -y xrdp
+mkdir /etc/polkit-1/localauthority/50-local.d
+chown 755 /etc/polkit-1/localauthority/50-local.d
+
+cat > /etc/polkit-1/localauthority/50-local.d/45-allow-colord.pkla <<EOF
+[Allow Colord all Users]
+Identity=unix-user:*
+Action=org.freedesktop.color-manager.create-device;org.freedesktop.color-manager.create-profile;org.freedesktop.color-manager.delete-device;org.freedesktop.color-manager.delete-profile;org.freedesktop.color-manager.modify-device;org.freedesktop.color-manager.modify-profile
+ResultAny=no
+ResultInactive=no
+ResultActive=yes
+EOF
+chmod 644 /etc/polkit-1/localauthority/50-local.d/45-allow-colord.pkla
+#+end_src
+
+*** software > ROS
+
+#+begin_src bash :tangle software/ros.sh
+#!/bin/bash
+
+ros_version="humble"
+
+common/add-ubuntu-repo.sh universe
+apt-get update
+apt-get install -y curl
+
+echo "Adding ROS repo key..."
+curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg
+
+# !!!! use common/add-ubuntu-repo.sh
+echo "Adding ROS repo..."
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null
+
+apt-get update
+# ROS recommends to upgrade OS before installation
+apt-get upgrade -y
+
+apt-get install -y ros-${version}-desktop
+
+# ROS-Base Install (Bare Bones): Communication libraries, message packages, command line tools. No GUI tools.
+# apt-get install -y ros-humble-ros-base
+# Development tools: Compilers and other tools to build ROS packages
+# apt-get install -y ros-dev-tools
+
+echo "Installing additional ROS dependencies..."
+apt-get install -y python3-rosdep python3-rosinstall python3-rosinstall-generator python3-wstool build-essential
+
+# /etc/ros/rosdep/sources.list.d/20-default.list
+echo "Initializing rosdep..."
+rosdep init
+
+echo "Updating rosdep..."
+rosdep update
+
+echo "Updating ~/.bashrc to load ROS setup.bash..."
+if ! grep "source /opt/ros/noetic/setup.bash" ~/.bashrc ; then
+    echo "source /opt/ros/noetic/setup.bash" >> ~/.bashrc;
+fi
+#+end_src
+
+
+
+* postinstall > ansible
+
+** ansible > How to pull ansible playbooks
 
 1. Find the playbook you want to pull on the repository. Get the URL of the playbook.
 2. Use the `ansible-pull` command to pull the playbook from the URL.
@@ -409,7 +522,7 @@ BOOK="path/to/playbook.yml"
 ansible-pull -U https://github.com/IE-Robotics-Lab/ -i "localhost," -c local -K $BOOK
 #+end_src  
 
-*** ansible > sudoers
+** ansible > sudoers
 
 #+begin_src yaml :tangle setup/configure_sudoers.yml
 ---
@@ -432,7 +545,7 @@ ansible-pull -U https://github.com/IE-Robotics-Lab/ -i "localhost," -c local -K 
 
 #+end_src
 
-*** ansible > use network manager instead of systemd-resolved for DNS
+** ansible > use network manager instead of systemd-resolved for DNS
 
 #+begin_src yaml :tangle ubuntu_enable_local_dns.yml
 ---
@@ -472,7 +585,10 @@ ansible-pull -U https://github.com/IE-Robotics-Lab/ -i "localhost," -c local -K 
 
 #+end_src
 
-*** ansible > packages
+** DONE ansible > software
+
+Replaced with [[*software > essentials][software > essentials]], [[*software > python packages][software > python packages]], [[*software > docker][software > docker]], [[*software >
+ VNC][software > VNC]], [[*software > ROS][software > ROS]]
 
 #+begin_src yaml :tangle setup/packages.yml
 ---
@@ -601,7 +717,7 @@ ansible-pull -U https://github.com/IE-Robotics-Lab/ -i "localhost," -c local -K 
 #+end_src
 
 
-*** ansible > xRDP
+** DONE ansible > xRDP
 
 #+begin_src yaml :tangle setup/services/xrdp.yml
 ---
@@ -636,7 +752,7 @@ ansible-pull -U https://github.com/IE-Robotics-Lab/ -i "localhost," -c local -K 
 
 #+end_src
 
-*** ansible > services > SSH
+** ansible > services > SSH
 
 #+begin_src yaml :tangle setup/services/ssh.yml
 ---

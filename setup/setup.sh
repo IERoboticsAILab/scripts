@@ -2,8 +2,6 @@
 
 # Service variables moved to config file
 GITHUB_REPO="https://github.com/IE-Robotics-Lab/scripts"
-ANSIBLE_PACKAGES="setup/packages.yml"
-ANSIBLE_PATH="setup/ansible.sh"
 DNS_ENABLE_SCRIPT="https://raw.githubusercontent.com/IE-Robotics-Lab/scripts/main/ubuntu_enable_local_dns.sh"
 ADD_STUDENT_SCRIPT="https://raw.githubusercontent.com/IE-Robotics-Lab/scripts/main/setup/adduser.sh"
 ANSIBLE_SSH="setup/services/ssh.yml"
@@ -18,17 +16,21 @@ die() {
 apt install curl libnss-ldapd libpam-ldapd nscd nslcd autofs ansible -y || die "Failed to install curl."
 
 ####### PACKAGES SETUP #######
-read -r -p "Would you like to install Ansible packages? (y/n)" response
-if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
-    ####### ANSIBLE SETUP #######
-    echo "Installing Ansible..."
-    curl -s https://raw.githubusercontent.com/IE-Robotics-Lab/scripts/master/$ANSIBLE_PATH | bash
-    ansible-pull -U $GITHUB_REPO -i "localhost," -c local -K $ANSIBLE_PACKAGES || die "Failed to install Ansible."
-    ansible-pull -U $GITHUB_REPO -i "localhost," -c local -K $ANSIBLE_SSH || die "Failed to run Ansible playbook."
-    echo "Ansible installed!"
+read -r -p "Would you like to install software packages? (y/n)" response
+if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then  
+    software/essentials.sh
+    software/python-packages.sh
+    software/docker.sh    
+    software/vnc.sh
+    software/ros.sh  
+
+    echo "Packages installed"
 else
-    echo "Skipping ROS and Ansible installation."
+    echo "Skipping ROS and software installation..."
 fi
+
+# !!!! script to setup SSH
+# ansible-pull -U $GITHUB_REPO -i "localhost," -c local -K $ANSIBLE_SSH || die "Failed to run Ansible playbook."
 
 ####### DNS SETUP #######
 echo "Testing local DNS resolution..."

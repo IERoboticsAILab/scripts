@@ -9,3 +9,12 @@ public repo, so the whole world would be able to see them
 
 Platforming scripts:
 - [Post-install scripts](postinstall.org)
+
+## Releases
+
+If you want to use a specific version of the scripts, just check it out. For example...
+
+git checkout v1.0
+
+Previous releases:
+- v1.0

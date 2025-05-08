@@ -9,7 +9,8 @@ ldapsearch -x -H ldap://10.205.10.3/ -D "cn=admin,dc=prometheus,dc=lab" -b "dc=p
 ** Get hosts
 
 #+begin_src bash :tangle misc/get_all_hosts.sh
-sudo cat /var/lib/docker/volumes/network_pihole-etc/_data/custom.list >> hosts.txt
+readonly DOCKER_VOLUMES=/var/snap/docker/common/var-lib-docker/volumes
+sudo cat ${DOCKER_VOLUMES}/network_pihole-etc/_data/custom.list >> hosts.txt
 #+end_src
 
 ** Register users in LAM

@@ -1,6 +1,7 @@
 TODO:
 
-- remove credentials from script
-- migrate ansible code to bash
-- make tasks optional depending upon inventory
+- [X] remove credentials from scripts
+- [ ] migrate ansible code to bash
+- [ ] implement "inventory" metaphor
 - update documentation and comments
+- make tasks optional depending upon inventory
