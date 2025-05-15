@@ -5,10 +5,8 @@ public repo, so the whole world would be able to see them
 
 ## In this repo...
 
-[System management scripts](sysman.org)
-
-Platforming scripts:
-- [Post-install scripts](postinstall.org)
+- Platforming scripts: see [Post-install scripts](postinstall.org) for details on how to complete the platforming of a computer (after installing the OS)
+- System management: see [System management scripts](sysman.org)
 
 ## Releases
 

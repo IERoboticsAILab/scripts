@@ -1,5 +1,22 @@
 * Post-install
 
+* Post-install instructions
+
+Clone scripts repo if needed:
+
+git clone https://github.com/IERoboticsAILab/scripts.git
+
+For a complete post-install, run =setup/setup.sh= with admin privileges. For example,
+
+#+begin_src bash
+sudo setup/setup.sh
+#+end_src
+
+If you need only some features, you can run specific scripts individually.
+For example, run =software/docker.sh= to setup only Docker
+
+In next sections you can find all the scripts available.
+
 * Post-install > shell scripts
 ** TODO post-install > shell > common notes
 
@@ -58,8 +75,9 @@ cp /etc/sudoers /etc/sudoers.bak
 
 
 # Install necessary packages
+# Note: autofs install moved to setup/services/nfs.sh
 echo "Installing necessary packages..."
-apt-get update && apt-get install -y libnss-ldapd libpam-ldapd nscd nslcd autofs
+apt-get update && apt-get install -y libnss-ldapd libpam-ldapd nscd nslcd
 # automatically adds ldap to nsswitch.conf
 
 # prompt for the password
@@ -152,7 +170,9 @@ echo "[LDAP] Configuration complete. LDAP users should now be able to log in and
 
 #+begin_src bash setup/services/nfs.sh
 #!/bin/bash
-# Configure autofs
+
+apt-get install -y autofs
+
 echo "[NFS] Configuring autoFS mount of /home..."
 
 echo "[NFS] Backing up original configuration files..."
@@ -190,14 +210,17 @@ DNS_ENABLE_SCRIPT="https://raw.githubusercontent.com/IE-Robotics-Lab/scripts/mai
 ADD_STUDENT_SCRIPT="https://raw.githubusercontent.com/IE-Robotics-Lab/scripts/main/setup/adduser.sh"
 ANSIBLE_SSH="setup/services/ssh.yml"
 
-# Function to handle errors
-die() {
-    echo "$1" >&2
-    exit 1
-}
+. $(dirname $0)/../common/useful.sh
 
 # !!!! install each package set inside its own task script
-apt install curl libnss-ldapd libpam-ldapd nscd nslcd autofs ansible -y || die "Failed to install curl."
+# libnss-ldapd libpam-ldapd nscd nslcd installed in setup/services/LDAP.sh
+# autofs installed in setup/services/nfs.sh
+# ansible is being retired
+apt install -y curl  || die "Failed to install curl."
+
+assert
+
+exit 1
 
 ####### PACKAGES SETUP #######
 read -r -p "Would you like to install software packages? (y/n)" response

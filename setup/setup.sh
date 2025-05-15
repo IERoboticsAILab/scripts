@@ -6,14 +6,17 @@ DNS_ENABLE_SCRIPT="https://raw.githubusercontent.com/IE-Robotics-Lab/scripts/mai
 ADD_STUDENT_SCRIPT="https://raw.githubusercontent.com/IE-Robotics-Lab/scripts/main/setup/adduser.sh"
 ANSIBLE_SSH="setup/services/ssh.yml"
 
-# Function to handle errors
-die() {
-    echo "$1" >&2
-    exit 1
-}
+. $(dirname $0)/../common/useful.sh
 
 # !!!! install each package set inside its own task script
-apt install curl libnss-ldapd libpam-ldapd nscd nslcd autofs ansible -y || die "Failed to install curl."
+# libnss-ldapd libpam-ldapd nscd nslcd installed in setup/services/LDAP.sh
+# autofs installed in setup/services/nfs.sh
+# ansible is being retired
+apt install -y curl  || die "Failed to install curl."
+
+assert
+
+exit 1
 
 ####### PACKAGES SETUP #######
 read -r -p "Would you like to install software packages? (y/n)" response

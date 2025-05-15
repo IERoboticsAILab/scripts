@@ -11,8 +11,9 @@ cp /etc/sudoers /etc/sudoers.bak
 
 
 # Install necessary packages
+# Note: autofs install moved to setup/services/nfs.sh
 echo "Installing necessary packages..."
-apt-get update && apt-get install -y libnss-ldapd libpam-ldapd nscd nslcd autofs
+apt-get update && apt-get install -y libnss-ldapd libpam-ldapd nscd nslcd
 # automatically adds ldap to nsswitch.conf
 
 # prompt for the password
