@@ -16,9 +16,8 @@ apt install -y curl  || die "Failed to install curl."
 
 assert
 
-exit 1
-
 ####### PACKAGES SETUP #######
+# !!!! better reflect decissions in configuration (instead of interactive questions)
 read -r -p "Would you like to install software packages? (y/n)" response
 if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then  
     software/essentials.sh
@@ -31,6 +30,8 @@ if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
 else
     echo "Skipping ROS and software installation..."
 fi
+
+assert
 
 # !!!! script to setup SSH
 # ansible-pull -U $GITHUB_REPO -i "localhost," -c local -K $ANSIBLE_SSH || die "Failed to run Ansible playbook."
